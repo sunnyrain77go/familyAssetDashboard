@@ -18,6 +18,10 @@ jobs:
         run: |
           npm install
           npm run build
+        env:
+          VITE_GS_API_KEY: ${{ secrets.VITE_GS_API_KEY }}
+          VITE_GS_SHEET_ID: ${{ secrets.VITE_GS_SHEET_ID }}
+          VITE_GS_RANGE: ${{ secrets.VITE_GS_RANGE }}
 
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4
