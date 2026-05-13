@@ -266,7 +266,7 @@ export function DashboardContent({
             券商帳戶(對帳用)
           </h3>
           <div className="space-y-4 flex-1">
-            {bankData.sort((a, b) => b.value - a.value).map((bank) => (
+            {[...bankData].sort((a, b) => b.value - a.value).map((bank) => (
               <div key={bank.name} className="flex items-center justify-between p-3 rounded-2xl bg-white border border-slate-100 hover:bg-indigo-50 transition-colors">
                 <div className="flex items-center gap-3">
                   <div className={cn(
