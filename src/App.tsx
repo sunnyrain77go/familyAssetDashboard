@@ -4,14 +4,14 @@
  */
 
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { CSVPage } from './pages/CSVPage';
 import { SheetsPage } from './pages/SheetsPage';
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <div className="min-h-screen pb-12 bg-slate-50/30">
         <Navbar />
         <main className="mt-4">
@@ -23,6 +23,6 @@ export default function App() {
           </Routes>
         </main>
       </div>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
