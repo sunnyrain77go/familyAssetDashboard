@@ -4,12 +4,13 @@
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Database, Settings, RefreshCw, ExternalLink } from 'lucide-react';
+import { Database, Settings, RefreshCw, ExternalLink, LogIn, LogOut } from 'lucide-react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'motion/react';
 import { PortfolioItem, MOCK_DATA } from '../types';
 import { cn } from '../lib/utils';
 import { DashboardContent } from '../components/DashboardContent';
+import { initAuth, getAccessToken, logout } from '../services/googleAuth';
 
 export function SheetsPage() {
   const [data, setData] = useState<PortfolioItem[]>(MOCK_DATA);
@@ -17,30 +18,42 @@ export function SheetsPage() {
   const [ownerFilter, setOwnerFilter] = useState<string | 'All'>('All');
   const [isFetching, setIsFetching] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
+  const [needsAuth, setNeedsAuth] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
   const [sheetsConfig, setSheetsConfig] = useState({
-    apiKey: localStorage.getItem('gs_api_key') || import.meta.env.VITE_GS_API_KEY || '',
     spreadsheetId: localStorage.getItem('gs_sheet_id') || import.meta.env.VITE_GS_SHEET_ID || '',
     range: localStorage.getItem('gs_range') || import.meta.env.VITE_GS_RANGE || 'Sheet1!A1:M',
   });
+
+  useEffect(() => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (clientId) {
+      initAuth(clientId);
+    }
+  }, []);
 
   const ownersList = useMemo(() => {
     return Array.from(new Set(data.map(item => item.owner))).sort();
   }, [data]);
 
   const handleResetConfig = () => {
-    localStorage.removeItem('gs_api_key');
     localStorage.removeItem('gs_sheet_id');
     localStorage.removeItem('gs_range');
     setSheetsConfig({
-      apiKey: import.meta.env.VITE_GS_API_KEY || '',
       spreadsheetId: import.meta.env.VITE_GS_SHEET_ID || '',
       range: import.meta.env.VITE_GS_RANGE || 'Sheet1!A1:M',
     });
-    alert('已清除瀏覽器暫存，改由環境變數讀取。');
+    alert('已重設試算表設定。');
+  };
+
+  const handleLogout = () => {
+    logout();
+    setIsLoggedIn(false);
+    setData(MOCK_DATA);
   };
 
   useEffect(() => {
-    if (sheetsConfig.apiKey) localStorage.setItem('gs_api_key', sheetsConfig.apiKey);
     if (sheetsConfig.spreadsheetId) localStorage.setItem('gs_sheet_id', sheetsConfig.spreadsheetId);
     if (sheetsConfig.range) localStorage.setItem('gs_range', sheetsConfig.range);
   }, [sheetsConfig]);
@@ -69,16 +82,22 @@ export function SheetsPage() {
       })) as PortfolioItem[];
   }
 
-  const fetchFromSheets = async () => {
-    if (!sheetsConfig.apiKey || !sheetsConfig.spreadsheetId) {
+  const fetchFromSheets = async (interactive = false) => {
+    if (!sheetsConfig.spreadsheetId) {
       setShowConfig(true);
       return;
     }
 
     setIsFetching(true);
+    setNeedsAuth(false);
     try {
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetsConfig.spreadsheetId}/values/${sheetsConfig.range}?key=${sheetsConfig.apiKey}`;
-      const response = await axios.get(url);
+      const token = await getAccessToken(interactive);
+      setIsLoggedIn(true);
+
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetsConfig.spreadsheetId}/values/${sheetsConfig.range}`;
+      const response = await axios.get(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       const rows = response.data.values;
 
       if (!rows || rows.length < 2) {
@@ -103,9 +122,19 @@ export function SheetsPage() {
       } else {
         alert('未能解析有效數據。');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Sheets API Error:', error);
-      alert('從 Google Sheets 獲取數據失敗，請檢查 API Key 或 Spreadsheet ID。');
+      const errorMsg = error.message || '';
+      if (
+        errorMsg === 'interaction_required' ||
+        errorMsg === 'popup_blocked' ||
+        errorMsg === 'timeout' ||
+        (axios.isAxiosError(error) && error.response?.status === 401)
+      ) {
+        setNeedsAuth(true);
+      } else {
+        alert('從 Google Sheets 獲取數據失敗，請檢查權限或 Spreadsheet ID。');
+      }
     } finally {
       setIsFetching(false);
     }
@@ -139,16 +168,25 @@ export function SheetsPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {isLoggedIn && (
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all shadow-sm shrink-0"
+            >
+              <LogOut size={18} />
+              登出
+            </button>
+          )}
           <button
-            onClick={fetchFromSheets}
+            onClick={() => fetchFromSheets(true)}
             disabled={isFetching}
             className={cn(
               "flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 shrink-0",
               isFetching && "opacity-50 cursor-not-allowed"
             )}
           >
-            <RefreshCw size={18} className={isFetching ? "animate-spin" : ""} />
-            {isFetching ? '同步中...' : 'Sheets 立即同步'}
+            {needsAuth ? <LogIn size={18} /> : <RefreshCw size={18} className={isFetching ? "animate-spin" : ""} />}
+            {isFetching ? '同步中...' : (needsAuth ? 'Google 授權' : 'Sheets 立即同步')}
           </button>
           <button
             onClick={() => setShowConfig(!showConfig)}
@@ -190,23 +228,7 @@ export function SheetsPage() {
                   </a>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">API Key</label>
-                  <input 
-                    type="password"
-                    placeholder="以 AIza... 開頭的 API 金鑰"
-                    value={sheetsConfig.apiKey}
-                    onChange={(e) => setSheetsConfig({...sheetsConfig, apiKey: e.target.value})}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                  />
-                  <p className={cn(
-                    "text-[9px] ml-1 transition-colors",
-                    sheetsConfig.apiKey.includes('googleusercontent.com') ? "text-rose-500 font-bold" : "text-slate-400"
-                  )}>
-                    提示：請使用 Google Cloud Console 產生的「API 金鑰」 (AIza...)
-                  </p>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Spreadsheet ID</label>
                   <input 
@@ -240,23 +262,23 @@ export function SheetsPage() {
         )}
       </AnimatePresence>
 
-      {(data === MOCK_DATA || !sheetsConfig.apiKey) && (
+      {(data === MOCK_DATA || needsAuth) && (
         <div className="max-w-7xl mx-auto px-6">
           <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex items-start gap-4">
             <div className="p-2 bg-indigo-100 rounded-xl text-indigo-600">
-               <Database size={20} />
+               <LogIn size={20} />
             </div>
             <div className="text-sm text-indigo-900">
-              <p className="font-bold mb-1">Google Sheets API 串接模式 (Sheets 版本)</p>
+              <p className="font-bold mb-1">需要 Google 帳號授權</p>
               <p className="opacity-80">
-                通過 Google Sheets API 自動同步。需填入 API Key 與 Spreadsheet ID，並將試算表權限設為公開檢視。
+                本系統現在使用 Google Identity Services 安全地讀取您的試算表。請點擊上方「Google 授權」按鈕。
               </p>
               <div className="mt-2 flex items-center gap-4">
                 <button 
-                  onClick={() => setShowConfig(true)}
+                  onClick={() => fetchFromSheets(true)}
                   className="text-xs font-bold underline hover:text-indigo-700"
                 >
-                  點此設定 API 連結
+                  立即授權
                 </button>
               </div>
             </div>
