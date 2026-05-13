@@ -27,10 +27,22 @@ export function SheetsPage() {
     return Array.from(new Set(data.map(item => item.owner))).sort();
   }, [data]);
 
+  const handleResetConfig = () => {
+    localStorage.removeItem('gs_api_key');
+    localStorage.removeItem('gs_sheet_id');
+    localStorage.removeItem('gs_range');
+    setSheetsConfig({
+      apiKey: import.meta.env.VITE_GS_API_KEY || '',
+      spreadsheetId: import.meta.env.VITE_GS_SHEET_ID || '',
+      range: import.meta.env.VITE_GS_RANGE || 'Sheet1!A1:M',
+    });
+    alert('已清除瀏覽器暫存，改由環境變數讀取。');
+  };
+
   useEffect(() => {
-    localStorage.setItem('gs_api_key', sheetsConfig.apiKey);
-    localStorage.setItem('gs_sheet_id', sheetsConfig.spreadsheetId);
-    localStorage.setItem('gs_range', sheetsConfig.range);
+    if (sheetsConfig.apiKey) localStorage.setItem('gs_api_key', sheetsConfig.apiKey);
+    if (sheetsConfig.spreadsheetId) localStorage.setItem('gs_sheet_id', sheetsConfig.spreadsheetId);
+    if (sheetsConfig.range) localStorage.setItem('gs_range', sheetsConfig.range);
   }, [sheetsConfig]);
 
   const mapData = (rawData: any[]): PortfolioItem[] => {
@@ -161,14 +173,22 @@ export function SheetsPage() {
                   <Settings size={16} className="text-indigo-600" />
                   Google Sheets API 設定
                 </h4>
-                <a 
-                  href="https://console.cloud.google.com/apis/credentials" 
-                  target="_blank" 
-                  rel="noreferrer"
-                  className="text-xs text-indigo-600 hover:underline flex items-center gap-1"
-                >
-                  獲取 API Key <ExternalLink size={12} />
-                </a>
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={handleResetConfig}
+                    className="text-[10px] font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-wider"
+                  >
+                    重設為系統預設值
+                  </button>
+                  <a 
+                    href="https://console.cloud.google.com/apis/credentials" 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="text-xs text-indigo-600 hover:underline flex items-center gap-1"
+                  >
+                    獲取 API Key <ExternalLink size={12} />
+                  </a>
+                </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
