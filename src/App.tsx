@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { 
   TrendingUp, 
   TrendingDown, 
