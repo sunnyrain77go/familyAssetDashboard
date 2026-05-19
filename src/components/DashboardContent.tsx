@@ -335,7 +335,7 @@ export function DashboardContent({
           <thead>
             <tr className="text-slate-400 text-xs font-semibold uppercase tracking-wider">
               <th className="px-4 py-3">持有者 / 代號</th>
-              <th className="px-4 py-3">張數 / 單位</th>
+              <th className="px-4 py-3">股數 / 單位</th>
               <th className="px-4 py-3">現價</th>
               <th className="px-4 py-3 text-right">今日變動</th>
               <th className="px-4 py-3 text-right">市值 (TWD)</th>
@@ -373,10 +373,10 @@ export function DashboardContent({
                 </td>
                 <td className="px-4 py-4 border-y border-slate-100">
                   <p className="text-sm font-semibold">
-                    {item.type === 'cash' ? '-' : formatNumber(item.type === 'stock' ? item.share / 1000 : item.share)}
+                    {formatNumber(item.share)}
                   </p>
                   <p className="text-[10px] text-slate-400">
-                    {item.type === 'cash' ? '' : (item.type === 'stock' ? '張' : '口')}
+                    {item.type === 'stock' ? '股' : item.type === 'futures' ? '口' : '元'}
                   </p>
                 </td>
                 <td className="px-4 py-4 border-y border-slate-100">
