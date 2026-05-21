@@ -286,6 +286,22 @@ export function DashboardContent({
                       </RePieChart>
                     </ResponsiveContainer>
                   </div>
+                  <div className="mt-4 space-y-2">
+                    {marketData.map((m, idx) => (
+                      <div key={m.name} className="flex items-center justify-between text-xs p-2 rounded-lg hover:bg-slate-50 transition-colors">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[(idx + 2) % COLORS.length] }} />
+                          <span className="font-medium text-slate-600">{m.name}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-slate-700">{formatWan(m.value)}</span>
+                          <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                            {((m.value / totals.value) * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </>
