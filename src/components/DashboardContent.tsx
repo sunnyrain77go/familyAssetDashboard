@@ -11,6 +11,7 @@ import {
   Wallet, 
   ShieldCheck, 
   PieChart, 
+  BarChart2,
   ArrowRightLeft,
   Building2,
   User,
@@ -101,6 +102,7 @@ export function DashboardContent({
         name: market,
         value: items.reduce((sum, item) => sum + item.value, 0),
         exposure: items.reduce((sum, item) => sum + item.exposure, 0),
+        change: items.reduce((sum, item) => sum + item.change, 0),
       };
     }).sort((a, b) => b.value - a.value);
   }, [ownerFilteredData]);
@@ -122,14 +124,36 @@ export function DashboardContent({
           icon={<Wallet className="text-indigo-600" />}
           subtitle="包含股票與現金市值"
           delay={0.1}
-        />
+        >
+          <div className="space-y-1">
+            {marketData.map((m) => (
+              <div key={m.name} className="flex justify-between items-center text-[10px]">
+                <span className="text-slate-400 font-medium">{m.name} 市場</span>
+                <span className="font-bold text-indigo-500">
+                  {formatCurrency(m.value)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </SummaryCard>
         <SummaryCard 
           title="總曝險 (Exposure)" 
           value={totals.exposure} 
           icon={<ShieldCheck className="text-pink-600" />}
           subtitle="包含期貨總合名目價值"
           delay={0.2}
-        />
+        >
+          <div className="space-y-1">
+            {marketData.map((m) => (
+              <div key={m.name} className="flex justify-between items-center text-[10px]">
+                <span className="text-slate-400 font-medium">{m.name} 市場</span>
+                <span className="font-bold text-pink-500">
+                  {formatCurrency(m.exposure)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </SummaryCard>
         <SummaryCard 
           title="今日損益 (Change)" 
           value={totals.change} 
@@ -137,7 +161,21 @@ export function DashboardContent({
           isProfit={totals.change >= 0}
           subtitle="與前一日市值比較"
           delay={0.3}
-        />
+        >
+          <div className="space-y-1">
+            {marketData.map((m, idx) => (
+              <div key={m.name} className="flex justify-between items-center text-[10px]">
+                <span className="text-slate-400 font-medium">{m.name} 市場</span>
+                <span className={cn(
+                  "font-bold",
+                  m.change >= 0 ? "text-emerald-500" : "text-rose-500"
+                )}>
+                  {m.change >= 0 ? '+' : ''}{formatCurrency(m.change)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </SummaryCard>
         <SummaryCard 
           title="總現金 (Cash)" 
           value={totals.cash} 
@@ -152,10 +190,13 @@ export function DashboardContent({
         <div className="lg:col-span-2 glass rounded-3xl p-8 overflow-hidden">
           {ownerFilter === 'All' ? (
             <>
-              <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-                <User size={20} className="text-indigo-600" />
-                各人資產分配
-              </h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <User size={20} className="text-indigo-600" />
+                  各人資產分配
+                </h3>
+              </div>
+              
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
                 {ownersData.map((owner, idx) => (
                   <motion.div 
@@ -174,7 +215,7 @@ export function DashboardContent({
                       <div className="flex justify-between items-end">
                         <div>
                           <p className="text-xs text-slate-400">曝險</p>
-                          <p className="font-semibold">{formatWan(owner.exposure)}</p>
+                          <p className="font-semibold text-slate-600">{formatWan(owner.exposure)}</p>
                         </div>
                         <div className="text-right">
                           <p className="text-xs text-slate-400">現金</p>
@@ -185,22 +226,67 @@ export function DashboardContent({
                   </motion.div>
                 ))}
               </div>
-              <div className="h-[250px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={ownersData} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                    <YAxis hide />
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                      formatter={(val: number) => [formatWan(val), '金額']}
-                    />
-                    <Bar dataKey="value" radius={[10, 10, 0, 0]} barSize={40}>
-                      {ownersData.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} fillOpacity={0.8} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-slate-50">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <BarChart2 size={14} /> 各人資產佔比
+                  </h4>
+                  <div className="h-[200px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart 
+                        data={ownersData} 
+                        layout="vertical" 
+                        margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+                      >
+                        <XAxis type="number" hide />
+                        <YAxis 
+                          dataKey="name" 
+                          type="category" 
+                          axisLine={false} 
+                          tickLine={false} 
+                          width={60}
+                          tick={{ fontSize: 12, fontWeight: 600, fill: '#64748b' }}
+                        />
+                        <Tooltip 
+                          cursor={{ fill: 'transparent' }}
+                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                          formatter={(val: number) => [formatWan(val), '市值']}
+                        />
+                        <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
+                          {ownersData.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <Building2 size={14} /> 全家市場分佈
+                  </h4>
+                  <div className="h-[200px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RePieChart>
+                        <Pie
+                          data={marketData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={70}
+                          paddingAngle={8}
+                          dataKey="value"
+                        >
+                          {marketData.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(val: number) => formatWan(val)} />
+                      </RePieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
               </div>
             </>
           ) : (

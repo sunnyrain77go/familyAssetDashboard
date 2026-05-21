@@ -16,17 +16,18 @@ interface SummaryCardProps {
   isNumber?: boolean;
   unit?: string;
   delay: number;
+  children?: React.ReactNode;
 }
 
-export function SummaryCard({ title, value, icon, subtitle, isProfit, isNumber, unit, delay }: SummaryCardProps) {
+export function SummaryCard({ title, value, icon, subtitle, isProfit, isNumber, unit, delay, children }: SummaryCardProps) {
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
-      className="glass card-hover rounded-3xl p-6 relative overflow-hidden"
+      className="glass card-hover rounded-3xl p-6 relative overflow-hidden flex flex-col h-full"
     >
-      <div className="flex justify-between items-start mb-4">
+      <div className="flex justify-between items-start mb-4 shrink-0">
         <div className="p-2.5 bg-slate-50 rounded-xl">
           {icon}
         </div>
@@ -35,7 +36,7 @@ export function SummaryCard({ title, value, icon, subtitle, isProfit, isNumber, 
         </div>
       </div>
       
-      <div>
+      <div className="flex-1">
         <p className="text-sm font-medium text-slate-500 mb-1">{title}</p>
         <div className="flex items-baseline gap-2">
           <h2 className={cn(
@@ -47,6 +48,12 @@ export function SummaryCard({ title, value, icon, subtitle, isProfit, isNumber, 
           {unit && <span className="text-sm font-semibold text-slate-400">{unit}</span>}
         </div>
         <p className="text-[10px] text-slate-400 mt-2 font-medium">{subtitle}</p>
+        
+        {children && (
+          <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
+            {children}
+          </div>
+        )}
       </div>
 
       {/* Background Decor */}
