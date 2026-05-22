@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useMemo } from 'react';
-import { motion } from 'motion/react';
+import React, { useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -17,7 +17,9 @@ import {
   User,
   Search,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  ChevronRight,
+  ChevronDown
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -51,6 +53,17 @@ export function DashboardContent({
   setSearchTerm,
   ownersList 
 }: DashboardContentProps) {
+  const [expandedSymbols, setExpandedSymbols] = useState<Set<string>>(new Set());
+
+  const toggleSymbol = (symbol: string) => {
+    const newSet = new Set(expandedSymbols);
+    if (newSet.has(symbol)) {
+      newSet.delete(symbol);
+    } else {
+      newSet.add(symbol);
+    }
+    setExpandedSymbols(newSet);
+  };
   
   // 1. Get data filtered by owner (if selected)
   const ownerFilteredData = useMemo(() => {
@@ -113,6 +126,44 @@ export function DashboardContent({
              item.bank.toLowerCase().includes(searchTerm.toLowerCase());
     });
   }, [ownerFilteredData, searchTerm]);
+
+  const groupedTableData = useMemo(() => {
+    const groups: Record<string, {
+      items: PortfolioItem[];
+      totalShare: number;
+      totalValue: number;
+      totalExposure: number;
+      totalChange: number;
+      type: string;
+      market: string;
+      price: number;
+    }> = {};
+
+    filteredTableData.forEach(item => {
+      if (!groups[item.id]) {
+        groups[item.id] = {
+          items: [],
+          totalShare: 0,
+          totalValue: 0,
+          totalExposure: 0,
+          totalChange: 0,
+          type: item.type,
+          market: item.market,
+          price: item.price
+        };
+      }
+      groups[item.id].items.push(item);
+      groups[item.id].totalShare += item.share;
+      groups[item.id].totalValue += item.value;
+      groups[item.id].totalExposure += item.exposure;
+      groups[item.id].totalChange += item.change;
+    });
+
+    return Object.entries(groups).map(([symbol, data]) => ({
+      symbol,
+      ...data
+    })).sort((a, b) => b.totalValue - a.totalValue);
+  }, [filteredTableData]);
 
   return (
     <main className="max-w-7xl mx-auto px-6 space-y-8">
@@ -446,68 +497,137 @@ export function DashboardContent({
             </tr>
           </thead>
           <tbody>
-            {filteredTableData.map((item, idx) => (
-              <motion.tr 
-                key={`${item.id}-${idx}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: idx * 0.05 }}
-                className="group bg-white hover:bg-indigo-50/50 transition-colors"
-              >
-                <td className="px-4 py-4 rounded-l-2xl border-y border-l border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold",
-                      ownerFilter === item.owner ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600"
-                    )} style={{ 
-                      backgroundColor: ownerFilter === 'All' ? COLORS[ownersList.indexOf(item.owner) % COLORS.length] + '20' : undefined,
-                      color: ownerFilter === 'All' ? COLORS[ownersList.indexOf(item.owner) % COLORS.length] : undefined
-                    }}>
-                      {item.owner}
-                    </div>
-                    <div>
-                      <p className="font-bold text-slate-800">{item.id}</p>
-                      <p className="text-[10px] text-slate-400 capitalize">
-                        {item.type === 'cash' ? '現金餘額' : item.type}
+            {groupedTableData.map((group, groupIdx) => {
+              const isExpanded = expandedSymbols.has(group.symbol);
+              const hasMultiple = group.items.length > 1;
+              const firstItem = group.items[0];
+              const allSameBank = group.items.every(item => item.bank === firstItem.bank);
+              const allSameMarket = group.items.every(item => item.market === firstItem.market);
+
+              return (
+                <React.Fragment key={group.symbol}>
+                  {/* Summary Row */}
+                  <motion.tr 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: groupIdx * 0.05 }}
+                    onClick={() => hasMultiple && toggleSymbol(group.symbol)}
+                    className={cn(
+                      "group transition-colors",
+                      hasMultiple ? "cursor-pointer" : "cursor-default",
+                      isExpanded ? "bg-indigo-50/30" : "bg-white hover:bg-slate-50"
+                    )}
+                  >
+                    <td className="px-4 py-4 rounded-l-2xl border-y border-l border-slate-100">
+                      <div className="flex items-center gap-3">
+                        {hasMultiple ? (
+                          <div className="p-1 rounded-lg bg-slate-100 text-slate-400 group-hover:text-indigo-600 transition-colors">
+                            {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                          </div>
+                        ) : (
+                          <div className={cn(
+                            "w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold",
+                            ownerFilter === firstItem.owner ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600"
+                          )}>
+                            {firstItem.owner}
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-bold text-slate-800">{group.symbol}</p>
+                          {hasMultiple && (
+                            <p className="text-[10px] text-slate-400 capitalize">
+                              {group.type === 'cash' ? `${group.items.length} 個帳戶` : `${group.items.length} 筆持有`}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 border-y border-slate-100">
+                      <p className="text-sm font-semibold">
+                        {formatNumber(group.totalShare)}
                       </p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-4 py-4 border-y border-slate-100">
-                  <p className="text-sm font-semibold">
-                    {formatNumber(item.share)}
-                  </p>
-                  <p className="text-[10px] text-slate-400">
-                    {item.type === 'stock' ? '股' : item.type === 'futures' ? '口' : '元'}
-                  </p>
-                </td>
-                <td className="px-4 py-4 border-y border-slate-100">
-                  <p className="text-sm font-mono">{item.price}</p>
-                  <p className="text-[10px] text-slate-400">{item.market}</p>
-                </td>
-                <td className="px-4 py-4 border-y border-slate-100 text-right">
-                  <div className={cn(
-                    "inline-flex items-center gap-0.5 text-xs font-bold",
-                    item.change >= 0 ? "text-emerald-600" : "text-rose-600"
-                  )}>
-                    {item.change >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                    {formatCurrency(item.change)}
-                  </div>
-                </td>
-                <td className="px-4 py-4 border-y border-slate-100 text-right">
-                  <p className="text-sm font-bold text-slate-800">{formatCurrency(item.value)}</p>
-                </td>
-                <td className="px-4 py-4 border-y border-slate-100 text-right">
-                  <p className="text-sm font-semibold text-slate-600">{formatCurrency(item.exposure)}</p>
-                </td>
-                <td className="px-4 py-4 border-y border-r border-slate-100 rounded-r-2xl">
-                  <p className="text-xs font-medium text-slate-700">{item.bank}</p>
-                  <div className="flex gap-1 mt-1">
-                    <span className="text-[8px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 uppercase">{item.market}</span>
-                  </div>
-                </td>
-              </motion.tr>
-            ))}
+                      <p className="text-[10px] text-slate-400">
+                        {group.type === 'stock' ? '股' : group.type === 'futures' ? '口' : '元'}
+                      </p>
+                    </td>
+                    <td className="px-4 py-4 border-y border-slate-100">
+                      <p className="text-sm font-mono">{group.price}</p>
+                      <p className="text-[10px] text-slate-400">{allSameMarket ? group.market : ""}</p>
+                    </td>
+                    <td className="px-4 py-4 border-y border-slate-100 text-right">
+                      <div className={cn(
+                        "inline-flex items-center gap-0.5 text-xs font-bold",
+                        group.totalChange >= 0 ? "text-emerald-600" : "text-rose-600"
+                      )}>
+                        {group.totalChange >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                        {formatCurrency(group.totalChange)}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 border-y border-slate-100 text-right">
+                      <p className="text-sm font-bold text-slate-800">{formatCurrency(group.totalValue)}</p>
+                    </td>
+                    <td className="px-4 py-4 border-y border-slate-100 text-right">
+                      <p className="text-sm font-semibold text-slate-600">{formatCurrency(group.totalExposure)}</p>
+                    </td>
+                    <td className="px-4 py-4 border-y border-r border-slate-100 rounded-r-2xl">
+                      <p className="text-xs font-medium text-slate-700">
+                        {allSameBank ? firstItem.bank : ""}
+                      </p>
+                      {allSameMarket && (
+                        <div className="flex gap-1 mt-1">
+                          <span className="text-[8px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 uppercase">{firstItem.market}</span>
+                        </div>
+                      )}
+                    </td>
+                  </motion.tr>
+
+                  {/* Detailed Rows (Only if multiple) */}
+                  <AnimatePresence>
+                    {hasMultiple && isExpanded && group.items.map((item, itemIdx) => (
+                      <motion.tr 
+                        key={`${item.id}-${item.owner}-${item.bank}-${itemIdx}`}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="bg-slate-50/50"
+                      >
+                        <td className="px-4 py-3 border-b border-l border-white pl-12">
+                          <div className="flex items-center gap-3">
+                            <div className="w-6 h-6 rounded flex items-center justify-center text-[8px] font-bold bg-white text-slate-400 border border-slate-100">
+                              {item.owner}
+                            </div>
+                            <p className="text-xs font-medium text-slate-500">{item.owner}</p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 border-b border-white">
+                          <p className="text-xs font-medium text-slate-600">{formatNumber(item.share)}</p>
+                        </td>
+                        <td className="px-4 py-3 border-b border-white">
+                          <p className="text-xs font-mono text-slate-400">{item.price}</p>
+                        </td>
+                        <td className="px-4 py-3 border-b border-white text-right">
+                          <p className={cn(
+                            "text-xs font-medium",
+                            item.change >= 0 ? "text-emerald-500" : "text-rose-500"
+                          )}>
+                            {item.change >= 0 ? '+' : ''}{formatCurrency(item.change)}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3 border-b border-white text-right">
+                          <p className="text-xs font-bold text-slate-600">{formatCurrency(item.value)}</p>
+                        </td>
+                        <td className="px-4 py-3 border-b border-white text-right">
+                          <p className="text-xs font-medium text-slate-400">{formatCurrency(item.exposure)}</p>
+                        </td>
+                        <td className="px-4 py-3 border-b border-r border-white rounded-r-lg">
+                          <p className="text-[10px] font-medium text-slate-400 uppercase">{item.bank}</p>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </AnimatePresence>
+                </React.Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>

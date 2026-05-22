@@ -56,6 +56,21 @@ export const MOCK_DATA: PortfolioItem[] = [
   },
   {
     owner: '媽',
+    id: '0050',
+    share: 80,
+    price: 195.5,
+    _value: 9775,
+    value: 9775,
+    _exposure: 9775,
+    exposure: 9775,
+    _change: -4,
+    change: -4,
+    market: 'TW',
+    bank: '國泰',
+    type: 'stock'
+  },
+  {
+    owner: '媽',
     id: '0056',
     share: 20000,
     price: 38.5,
@@ -71,6 +86,21 @@ export const MOCK_DATA: PortfolioItem[] = [
   },
   {
     owner: '小孩',
+    id: 'NVDA',
+    share: 150,
+    price: 110.5,
+    _value: 16575,
+    value: 538687.5,
+    _exposure: 16575,
+    exposure: 538687.5,
+    _change: 450,
+    change: 14625,
+    market: 'US',
+    bank: 'Firstrade',
+    type: 'stock'
+  },
+  {
+    owner: '媽',
     id: 'NVDA',
     share: 150,
     price: 110.5,
