@@ -54,7 +54,7 @@ export function DashboardContent({
   ownersList 
 }: DashboardContentProps) {
   const [expandedSymbols, setExpandedSymbols] = useState<Set<string>>(new Set());
-  const [sortBy, setSortBy] = useState<'value' | 'original'>('value');
+  const [sortBy, setSortBy] = useState<'value' | 'exposure' | 'original'>('value');
 
   const toggleSymbol = (symbol: string) => {
     const newSet = new Set(expandedSymbols);
@@ -170,6 +170,8 @@ export function DashboardContent({
 
     if (sortBy === 'original') {
       return result.sort((a, b) => a.originalIndex - b.originalIndex);
+    } else if (sortBy === 'exposure') {
+      return result.sort((a, b) => b.totalExposure - a.totalExposure);
     } else {
       return result.sort((a, b) => b.totalValue - a.totalValue);
     }
@@ -494,6 +496,18 @@ export function DashboardContent({
                 )}
               >
                 按市值排序
+              </button>
+              <button
+                id="sort-by-exposure-btn"
+                onClick={() => setSortBy('exposure')}
+                className={cn(
+                  "flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200",
+                  sortBy === 'exposure' 
+                    ? "bg-white text-indigo-600 shadow-xs" 
+                    : "text-slate-500 hover:text-slate-800"
+                )}
+              >
+                按曝險排序
               </button>
               <button
                 id="sort-by-original-btn"
