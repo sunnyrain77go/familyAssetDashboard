@@ -10,7 +10,7 @@ export function formatCurrency(value: number, currency: string = 'TWD') {
     style: 'currency',
     currency: currency === 'TWD' ? 'TWD' : currency,
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: currency === 'TWD' ? 0 : 2,
   }).format(value);
 }
 

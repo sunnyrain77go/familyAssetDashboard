@@ -54,6 +54,7 @@ export function DashboardContent({
   ownersList 
 }: DashboardContentProps) {
   const [expandedSymbols, setExpandedSymbols] = useState<Set<string>>(new Set());
+  const [sortBy, setSortBy] = useState<'value' | 'original'>('value');
 
   const toggleSymbol = (symbol: string) => {
     const newSet = new Set(expandedSymbols);
@@ -137,10 +138,12 @@ export function DashboardContent({
       type: string;
       market: string;
       price: number;
+      originalIndex: number;
     }> = {};
 
-    filteredTableData.forEach(item => {
+    filteredTableData.forEach((item, idx) => {
       if (!groups[item.id]) {
+        const resolvedIndex = data.findIndex(d => d.id === item.id);
         groups[item.id] = {
           items: [],
           totalShare: 0,
@@ -149,7 +152,8 @@ export function DashboardContent({
           totalChange: 0,
           type: item.type,
           market: item.market,
-          price: item.price
+          price: item.price,
+          originalIndex: resolvedIndex >= 0 ? resolvedIndex : idx
         };
       }
       groups[item.id].items.push(item);
@@ -159,11 +163,17 @@ export function DashboardContent({
       groups[item.id].totalChange += item.change;
     });
 
-    return Object.entries(groups).map(([symbol, data]) => ({
+    const result = Object.entries(groups).map(([symbol, data]) => ({
       symbol,
       ...data
-    })).sort((a, b) => b.totalValue - a.totalValue);
-  }, [filteredTableData]);
+    }));
+
+    if (sortBy === 'original') {
+      return result.sort((a, b) => a.originalIndex - b.originalIndex);
+    } else {
+      return result.sort((a, b) => b.totalValue - a.totalValue);
+    }
+  }, [filteredTableData, sortBy, data]);
 
   return (
     <main className="max-w-7xl mx-auto px-6 space-y-8">
@@ -470,10 +480,39 @@ export function DashboardContent({
             <ArrowRightLeft size={20} className="text-indigo-600" />
             持股明細
           </h3>
-          <div className="flex w-full md:w-auto gap-4">
+          <div className="flex flex-col sm:flex-row w-full md:w-auto items-stretch sm:items-center gap-3">
+            {/* Sorting Buttons */}
+            <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
+              <button
+                id="sort-by-value-btn"
+                onClick={() => setSortBy('value')}
+                className={cn(
+                  "flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200",
+                  sortBy === 'value' 
+                    ? "bg-white text-indigo-600 shadow-xs" 
+                    : "text-slate-500 hover:text-slate-800"
+                )}
+              >
+                按市值排序
+              </button>
+              <button
+                id="sort-by-original-btn"
+                onClick={() => setSortBy('original')}
+                className={cn(
+                  "flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200",
+                  sortBy === 'original' 
+                    ? "bg-white text-indigo-600 shadow-xs" 
+                    : "text-slate-500 hover:text-slate-800"
+                )}
+              >
+                原始排序 (Sheets)
+              </button>
+            </div>
+
             <div className="relative flex-1 md:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input 
+                id="portfolio-search-input"
                 type="text" 
                 placeholder="搜尋 代號 或 券商..." 
                 className="w-full pl-10 pr-4 py-2 bg-slate-100 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
