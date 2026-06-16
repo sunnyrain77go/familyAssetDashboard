@@ -79,8 +79,9 @@ export function DashboardContent({
       value: acc.value + item.value,
       exposure: acc.exposure + item.exposure,
       change: acc.change + item.change,
-      cash: acc.cash + (item.type === 'cash' ? item.value : 0)
-    }), { value: 0, exposure: 0, change: 0, cash: 0 });
+      cash: acc.cash + (item.type === 'cash' ? item.value : 0),
+      debt: acc.debt + (item.type === 'debt' ? item.value : 0)
+    }), { value: 0, exposure: 0, change: 0, cash: 0, debt: 0 });
   }, [ownerFilteredData]);
 
   const ownersData = useMemo(() => {
@@ -91,7 +92,8 @@ export function DashboardContent({
         value: items.reduce((sum, item) => sum + item.value, 0),
         exposure: items.reduce((sum, item) => sum + item.exposure, 0),
         change: items.reduce((sum, item) => sum + item.change, 0),
-        cash: items.reduce((sum, item) => sum + (item.type === 'cash' ? item.value : 0), 0)
+        cash: items.reduce((sum, item) => sum + (item.type === 'cash' ? item.value : 0), 0),
+        debt: items.reduce((sum, item) => sum + (item.type === 'debt' ? item.value : 0), 0)
       };
     });
   }, [data, ownersList]);
@@ -240,12 +242,27 @@ export function DashboardContent({
           </div>
         </SummaryCard>
         <SummaryCard 
-          title="總現金 (Cash)" 
-          value={totals.cash} 
+          title="流動資金" 
+          value={totals.cash + totals.debt} 
           icon={<Wallet className="text-amber-600" />}
-          subtitle="各帳戶閒置資金總和"
+          subtitle="各帳戶閒置資金與質押總和"
           delay={0.4}
-        />
+        >
+          <div className="space-y-1">
+            <div className="flex justify-between items-center text-[10px]">
+              <span className="text-slate-400 font-medium">現金</span>
+              <span className="font-bold text-amber-600">
+                {formatCurrency(totals.cash)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center text-[10px]">
+              <span className="text-slate-400 font-medium">質押</span>
+              <span className="font-bold text-indigo-500">
+                {formatCurrency(totals.debt)}
+              </span>
+            </div>
+          </div>
+        </SummaryCard>
       </div>
 
       {/* Middle Section */}
@@ -281,8 +298,8 @@ export function DashboardContent({
                           <p className="font-semibold text-slate-600">{formatWan(owner.exposure)}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-xs text-slate-400">現金</p>
-                          <p className="font-semibold text-amber-600">{formatWan(owner.cash)}</p>
+                          <p className="text-xs text-slate-400">流動資金</p>
+                          <p className="font-semibold text-amber-600">{formatWan(owner.cash + owner.debt)}</p>
                         </div>
                       </div>
                     </div>
@@ -589,7 +606,11 @@ export function DashboardContent({
                           <p className="font-bold text-slate-800">{group.symbol}</p>
                           {hasMultiple && (
                             <p className="text-[10px] text-slate-400 capitalize">
-                              {group.type === 'cash' ? `${group.items.length} 個帳戶` : `${group.items.length} 筆持有`}
+                              {group.type === 'cash' 
+                                ? `${group.items.length} 個帳戶` 
+                                : group.type === 'debt' 
+                                ? `${group.items.length} 筆質押` 
+                                : `${group.items.length} 筆持有`}
                             </p>
                           )}
                         </div>

@@ -77,6 +77,7 @@ export function SheetsPage() {
         type: (
           String(row.type).toLowerCase().includes('fut') ? 'futures' : 
           String(row.type).toLowerCase().includes('cash') || String(row.type).includes('現') ? 'cash' : 
+          String(row.type).toLowerCase().includes('debt') || String(row.type).includes('質') ? 'debt' : 
           'stock'
         ) as any
       })) as PortfolioItem[];

@@ -5,7 +5,7 @@
 
 export type Owner = string;
 export type Market = string;
-export type AssetType = 'stock' | 'futures' | 'cash';
+export type AssetType = 'stock' | 'futures' | 'cash' | 'debt';
 
 export interface PortfolioItem {
   owner: Owner;
@@ -173,5 +173,20 @@ export const MOCK_DATA: PortfolioItem[] = [
     market: 'US',
     bank: '富邦',
     type: 'cash'
+  },
+  {
+    owner: '爸',
+    id: '股票質押',
+    share: 300000,
+    price: 1,
+    _value: 300000,
+    value: 300000,
+    _exposure: 0,
+    exposure: 0,
+    _change: 0,
+    change: 0,
+    market: 'TW',
+    bank: '永豐金',
+    type: 'debt'
   }
 ];
