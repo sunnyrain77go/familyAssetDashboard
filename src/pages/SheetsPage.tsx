@@ -23,7 +23,7 @@ export function SheetsPage() {
 
   const [sheetsConfig, setSheetsConfig] = useState({
     spreadsheetId: localStorage.getItem('gs_sheet_id') || import.meta.env.VITE_GS_SHEET_ID || '',
-    range: localStorage.getItem('gs_range') || import.meta.env.VITE_GS_RANGE || 'Sheet1!A1:M',
+    range: localStorage.getItem('gs_range') || import.meta.env.VITE_GS_RANGE || 'Sheet1!A1:N',
   });
 
   useEffect(() => {
@@ -42,7 +42,7 @@ export function SheetsPage() {
     localStorage.removeItem('gs_range');
     setSheetsConfig({
       spreadsheetId: import.meta.env.VITE_GS_SHEET_ID || '',
-      range: import.meta.env.VITE_GS_RANGE || 'Sheet1!A1:M',
+      range: import.meta.env.VITE_GS_RANGE || 'Sheet1!A1:N',
     });
     alert('已重設試算表設定。');
   };
