@@ -24,26 +24,64 @@ export function CSVPage() {
   const mapData = (rawData: any[]): PortfolioItem[] => {
     return rawData
       .filter((row: any) => row.owner && row.id)
-      .map((row: any) => ({
-        owner: String(row.owner).trim(),
-        id: String(row.id).trim(),
-        share: Number(String(row.share).replace(/,/g, '')) || 0,
-        price: Number(String(row.price).replace(/,/g, '')) || 0,
-        _value: Number(String(row._value).replace(/,/g, '')) || 0,
-        value: Number(String(row.value).replace(/,/g, '')) || 0,
-        _exposure: Number(String(row._exposure).replace(/,/g, '')) || 0,
-        exposure: Number(String(row.exposure).replace(/,/g, '')) || 0,
-        _change: Number(String(row._change).replace(/,/g, '')) || 0,
-        change: Number(String(row.change).replace(/,/g, '')) || 0,
-        market: String(row.market || 'TW').trim(),
-        bank: String(row.bank || 'Unknown').trim(),
-        type: (
-          String(row.type).toLowerCase().includes('fut') ? 'futures' : 
-          String(row.type).toLowerCase().includes('cash') || String(row.type).includes('現') ? 'cash' : 
-          String(row.type).toLowerCase().includes('debt') || String(row.type).includes('質') ? 'debt' : 
-          'stock'
-        ) as any
-      })) as PortfolioItem[];
+      .map((row: any) => {
+        const subcat = String(row.subcat || '').trim().toUpperCase();
+        
+        // Define subcat to type mapping
+        const subcatToType: Record<string, string> = {
+          'A1': '自由現金',
+          'A2': '加密貨幣',
+          'B1': '台股',
+          'B2': '美股/全球',
+          'B3': '債券ETF',
+          'B4': '槓桿ETF',
+          'B5': '商品ETF',
+          'C1': '期貨保證金',
+          'C2': '期貨合約',
+          'D1': '儲蓄保單',
+          'D2': '其他保險',
+          'E1': '不動產',
+          'E2': '退休金',
+          'F1': '股票質押',
+          'F2': '信貸'
+        };
+
+        let type = String(row.type || '').trim();
+        
+        // If subcat is provided and known, map it
+        if (subcat && subcatToType[subcat]) {
+          type = subcatToType[subcat];
+        } else if (!type) {
+          // Fallback parsing if neither is clean
+          const rawTypeLower = String(row.type || '').toLowerCase();
+          if (rawTypeLower.includes('fut')) {
+            type = '期貨合約';
+          } else if (rawTypeLower.includes('cash') || rawTypeLower.includes('現')) {
+            type = '自由現金';
+          } else if (rawTypeLower.includes('debt') || rawTypeLower.includes('質')) {
+            type = '股票質押';
+          } else {
+            type = '台股';
+          }
+        }
+
+        return {
+          owner: String(row.owner).trim(),
+          id: String(row.id).trim(),
+          share: Number(String(row.share).replace(/,/g, '')) || 0,
+          price: Number(String(row.price).replace(/,/g, '')) || 0,
+          _value: Number(String(row._value).replace(/,/g, '')) || 0,
+          value: Number(String(row.value).replace(/,/g, '')) || 0,
+          _exposure: Number(String(row._exposure).replace(/,/g, '')) || 0,
+          exposure: Number(String(row.exposure).replace(/,/g, '')) || 0,
+          _change: Number(String(row._change).replace(/,/g, '')) || 0,
+          change: Number(String(row.change).replace(/,/g, '')) || 0,
+          market: String(row.market || 'TW').trim(),
+          bank: String(row.bank || 'Unknown').trim(),
+          type,
+          subcat: subcat || undefined
+        };
+      }) as PortfolioItem[];
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,12 +163,12 @@ export function CSVPage() {
             <div className="text-sm text-indigo-900">
               <p className="font-bold mb-1">目前顯示範例數據 (CSV 版本)</p>
               <p className="opacity-80">
-                您可以手動導入 CSV 檔案。欄位需包含 owner, id, share, price, _value, value, _exposure, exposure, _change, change, market, bank, type。
+                您可以手動導入 CSV 檔案。欄位需包含 owner, id, share, price, _value, value, _exposure, exposure, _change, change, market, bank, type, subcat。
               </p>
               <div className="mt-2 flex items-center gap-4">
                 <button 
                   onClick={() => {
-                    const csvContent = "owner,id,share,price,_value,value,_exposure,exposure,_change,change,market,bank,type\n爸,0050,12811,96.85,1240745.35,1240745.35,1240745.35,1240745.35,-640.55,-640.55,TW,永豐金,stock";
+                    const csvContent = "owner,id,share,price,_value,value,_exposure,exposure,_change,change,market,bank,type,subcat\n宗,0050,13100,107.3,1405630,1405630,1405630,1405630,17030,17030,TW,永豐金,台股,B1";
                     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                     const link = document.createElement("a");
                     const url = URL.createObjectURL(blob);
