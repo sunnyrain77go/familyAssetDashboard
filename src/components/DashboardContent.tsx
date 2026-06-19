@@ -112,6 +112,15 @@ const GROUP_CONFIG: Record<string, {
   }
 };
 
+const getMarketConfig = (market: string) => {
+  const m = market.toUpperCase();
+  if (m === 'TW') return { label: '台灣市場 (TW)', color: 'bg-rose-500', textColor: 'text-rose-600' };
+  if (m === 'US') return { label: '美國市場 (US)', color: 'bg-blue-500', textColor: 'text-blue-600' };
+  if (m === 'GLOBAL') return { label: '全球市場 (Global)', color: 'bg-cyan-500', textColor: 'text-cyan-600' };
+  if (m === 'CASH') return { label: '現金部位 (Cash)', color: 'bg-emerald-500', textColor: 'text-emerald-600' };
+  return { label: market, color: 'bg-slate-400', textColor: 'text-slate-500' };
+};
+
 interface DashboardContentProps {
   data: PortfolioItem[];
   ownerFilter: string | 'All';
@@ -305,6 +314,17 @@ export function DashboardContent({
       };
     }).sort((a, b) => b.value - a.value);
   }, [activeTypes, typeFilteredData]);
+
+  const marketCalculations = useMemo(() => {
+    const marketMap: Record<string, number> = {};
+    typeFilteredData.forEach(item => {
+      const m = item.market || 'OTHER';
+      marketMap[m] = (marketMap[m] || 0) + item.change;
+    });
+    return Object.entries(marketMap)
+      .map(([name, change]) => ({ name, change }))
+      .sort((a, b) => b.change - a.change);
+  }, [typeFilteredData]);
 
   const chartData = useMemo(() => {
     return typeCalculations.filter(tc => tc.value !== 0);
@@ -545,22 +565,29 @@ export function DashboardContent({
           delay={0.1}
         >
           <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1 select-none scrollbar-thin">
-            {typeCalculations.filter(tc => tc.value !== 0).map((tc) => {
-              const sub = typeToSubcat[tc.name] || '';
-              const firstChar = sub.charAt(0).toUpperCase();
-              const groupConfig = GROUP_CONFIG[firstChar] || GROUP_CONFIG.OTHER;
-              return (
-                <div key={tc.name} className="flex justify-between items-center text-[10px]">
-                  <div className="flex items-center gap-1.5 truncate max-w-[120px]">
-                    <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", groupConfig.color)} />
-                    <span className="text-slate-500 font-bold truncate">{tc.name}</span>
+            {typeCalculations
+              .filter(tc => tc.value !== 0)
+              .sort((a, b) => {
+                const subA = String(typeToSubcat[a.name] || '').toUpperCase();
+                const subB = String(typeToSubcat[b.name] || '').toUpperCase();
+                return subA.localeCompare(subB);
+              })
+              .map((tc) => {
+                const sub = typeToSubcat[tc.name] || '';
+                const firstChar = sub.charAt(0).toUpperCase();
+                const groupConfig = GROUP_CONFIG[firstChar] || GROUP_CONFIG.OTHER;
+                return (
+                  <div key={tc.name} className="flex justify-between items-center text-[10px]">
+                    <div className="flex items-center gap-1.5 truncate max-w-[120px]">
+                      <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", groupConfig.color)} />
+                      <span className="text-slate-500 font-bold truncate">{tc.name}</span>
+                    </div>
+                    <span className={cn("font-extrabold", groupConfig.textColor)}>
+                      {formatCurrency(tc.value)}
+                    </span>
                   </div>
-                  <span className={cn("font-extrabold", groupConfig.textColor)}>
-                    {formatCurrency(tc.value)}
-                  </span>
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
         </SummaryCard>
         <SummaryCard 
@@ -571,22 +598,29 @@ export function DashboardContent({
           delay={0.2}
         >
           <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1 select-none scrollbar-thin">
-            {typeCalculations.filter(tc => tc.exposure !== 0).map((tc) => {
-              const sub = typeToSubcat[tc.name] || '';
-              const firstChar = sub.charAt(0).toUpperCase();
-              const groupConfig = GROUP_CONFIG[firstChar] || GROUP_CONFIG.OTHER;
-              return (
-                <div key={tc.name} className="flex justify-between items-center text-[10px]">
-                  <div className="flex items-center gap-1.5 truncate max-w-[120px]">
-                    <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", groupConfig.color)} />
-                    <span className="text-slate-500 font-bold truncate">{tc.name}</span>
+            {typeCalculations
+              .filter(tc => tc.exposure !== 0)
+              .sort((a, b) => {
+                const subA = String(typeToSubcat[a.name] || '').toUpperCase();
+                const subB = String(typeToSubcat[b.name] || '').toUpperCase();
+                return subA.localeCompare(subB);
+              })
+              .map((tc) => {
+                const sub = typeToSubcat[tc.name] || '';
+                const firstChar = sub.charAt(0).toUpperCase();
+                const groupConfig = GROUP_CONFIG[firstChar] || GROUP_CONFIG.OTHER;
+                return (
+                  <div key={tc.name} className="flex justify-between items-center text-[10px]">
+                    <div className="flex items-center gap-1.5 truncate max-w-[120px]">
+                      <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", groupConfig.color)} />
+                      <span className="text-slate-500 font-bold truncate">{tc.name}</span>
+                    </div>
+                    <span className={cn("font-extrabold", groupConfig.textColor)}>
+                      {formatCurrency(tc.exposure)}
+                    </span>
                   </div>
-                  <span className={cn("font-extrabold", groupConfig.textColor)}>
-                    {formatCurrency(tc.exposure)}
-                  </span>
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
         </SummaryCard>
         <SummaryCard 
@@ -598,19 +632,19 @@ export function DashboardContent({
           delay={0.3}
         >
           <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1 select-none scrollbar-thin">
-            {typeCalculations.filter(tc => tc.change !== 0).map((tc) => {
-              const sub = typeToSubcat[tc.name] || '';
-              const firstChar = sub.charAt(0).toUpperCase();
-              const groupConfig = GROUP_CONFIG[firstChar] || GROUP_CONFIG.OTHER;
+            {marketCalculations.filter(mc => mc.change !== 0).map((mc) => {
+              const config = getMarketConfig(mc.name);
+              const isProfit = mc.change >= 0;
+              const textColor = isProfit ? 'text-emerald-600' : 'text-rose-600';
               return (
-                <div key={tc.name} className="flex justify-between items-center text-[10px]">
+                <div key={mc.name} className="flex justify-between items-center text-[10px]">
                   <div className="flex items-center gap-1.5 truncate max-w-[120px]">
-                    <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", groupConfig.color)} />
-                    <span className="text-slate-500 font-bold truncate">{tc.name}</span>
+                    <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", config.color)} />
+                    <span className="text-slate-500 font-bold truncate">{config.label}</span>
                   </div>
-                  <span className={cn("font-extrabold flex items-center gap-0.5", groupConfig.textColor)}>
-                    <span className="text-[8px]">{tc.change >= 0 ? '▲' : '▼'}</span>
-                    <span>{tc.change >= 0 ? '+' : ''}{formatCurrency(tc.change)}</span>
+                  <span className={cn("font-extrabold flex items-center gap-0.5", textColor)}>
+                    <span className="text-[8px]">{isProfit ? '▲' : '▼'}</span>
+                    <span>{isProfit ? '+' : ''}{formatCurrency(mc.change)}</span>
                   </span>
                 </div>
               );
