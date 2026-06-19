@@ -34,7 +34,16 @@ export function SheetsPage() {
   }, []);
 
   const ownersList = useMemo(() => {
-    return Array.from(new Set(data.map(item => item.owner))).sort();
+    const uniqueOwners = Array.from(new Set(data.map(item => item.owner).filter((o): o is string => !!o)));
+    const order = ["宗", "婷", "均宸"];
+    return uniqueOwners.sort((a: string, b: string) => {
+      const idxA = order.indexOf(a);
+      const idxB = order.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
   }, [data]);
 
   const handleResetConfig = () => {
