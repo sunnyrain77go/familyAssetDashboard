@@ -19,7 +19,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   ChevronRight,
-  ChevronDown
+  ChevronDown,
+  Globe
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -114,11 +115,11 @@ const GROUP_CONFIG: Record<string, {
 
 const getMarketConfig = (market: string) => {
   const m = market.toUpperCase();
-  if (m === 'TW') return { label: '台灣市場 (TW)', color: 'bg-rose-500', textColor: 'text-rose-600' };
-  if (m === 'US') return { label: '美國市場 (US)', color: 'bg-blue-500', textColor: 'text-blue-600' };
-  if (m === 'GLOBAL') return { label: '全球市場 (Global)', color: 'bg-cyan-500', textColor: 'text-cyan-600' };
-  if (m === 'CASH') return { label: '現金部位 (Cash)', color: 'bg-emerald-500', textColor: 'text-emerald-600' };
-  return { label: market, color: 'bg-slate-400', textColor: 'text-slate-500' };
+  if (m === 'TW') return { label: '台灣市場 (TW)', color: 'bg-rose-500', fillColor: '#f43f5e', textColor: 'text-rose-600' };
+  if (m === 'US') return { label: '美國市場 (US)', color: 'bg-blue-500', fillColor: '#3b82f6', textColor: 'text-blue-600' };
+  if (m === 'GLOBAL') return { label: '全球市場 (Global)', color: 'bg-cyan-500', fillColor: '#06b6d4', textColor: 'text-cyan-600' };
+  if (m === 'CASH') return { label: '現金部位 (Cash)', color: 'bg-emerald-500', fillColor: '#10b981', textColor: 'text-emerald-600' };
+  return { label: market, color: 'bg-slate-400', fillColor: '#94a3b8', textColor: 'text-slate-500' };
 };
 
 interface DashboardContentProps {
@@ -324,6 +325,18 @@ export function DashboardContent({
     return Object.entries(marketMap)
       .map(([name, change]) => ({ name, change }))
       .sort((a, b) => b.change - a.change);
+  }, [typeFilteredData]);
+
+  const marketValueCalculations = useMemo(() => {
+    const marketMap: Record<string, number> = {};
+    typeFilteredData.forEach(item => {
+      const m = item.market || 'OTHER';
+      marketMap[m] = (marketMap[m] || 0) + item.value;
+    });
+    return Object.entries(marketMap)
+      .map(([name, value]) => ({ name, value }))
+      .filter(mc => mc.value !== 0)
+      .sort((a, b) => b.value - a.value);
   }, [typeFilteredData]);
 
   const chartData = useMemo(() => {
@@ -731,7 +744,7 @@ export function DashboardContent({
                 ))}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-slate-50">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-8 border-t border-slate-50">
                 <div>
                   <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                     <BarChart2 size={14} /> 各人資產佔比
@@ -807,59 +820,161 @@ export function DashboardContent({
                     ))}
                   </div>
                 </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <Globe size={14} /> 全家資產市場佔比
+                  </h4>
+                  <div className="h-[200px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RePieChart>
+                        <Pie
+                          data={marketValueCalculations}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={70}
+                          paddingAngle={8}
+                          dataKey="value"
+                        >
+                          {marketValueCalculations.map((m) => {
+                            const config = getMarketConfig(m.name);
+                            return (
+                              <Cell key={`cell-${m.name}`} fill={config.fillColor} />
+                            );
+                          })}
+                        </Pie>
+                        <Tooltip formatter={(val: number) => formatWan(val)} />
+                      </RePieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    {marketValueCalculations.map((m) => {
+                      const config = getMarketConfig(m.name);
+                      return (
+                        <div key={m.name} className="flex items-center justify-between text-xs p-2 rounded-lg hover:bg-slate-50 transition-colors">
+                          <div className="flex items-center gap-2">
+                            <div className={cn("w-2 h-2 rounded-full", config.color)} />
+                            <span className="font-medium text-slate-600">{config.label}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="font-bold text-slate-700">{formatWan(m.value)}</span>
+                            <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                              {totals.value > 0 ? ((m.value / totals.value) * 100).toFixed(1) : 0}%
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </>
           ) : (
             <>
               <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-slate-900">
                 <PieChart size={20} className="text-pink-600" />
-                {ownerFilter} 的資產種類分佈
+                {ownerFilter} 的資產分佈
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                <div className="h-[280px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RePieChart>
-                      <Pie
-                        data={chartData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={8}
-                        dataKey="value"
-                      >
-                        {chartData.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(val: number) => formatWan(val)} />
-                    </RePieChart>
-                  </ResponsiveContainer>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-4">
+                {/* Column 1: Asset categories */}
+                <div>
+                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <BarChart2 size={14} /> 資產種類佔比
+                  </h4>
+                  <div className="h-[200px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RePieChart>
+                        <Pie
+                          data={chartData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={70}
+                          paddingAngle={8}
+                          dataKey="value"
+                        >
+                          {chartData.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(val: number) => formatWan(val)} />
+                      </RePieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    {chartData.map((m, idx) => (
+                      <div key={m.name} className="p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-white hover:shadow-sm transition-all">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                            <span className="font-bold text-xs text-slate-700">{m.name}</span>
+                          </div>
+                          <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
+                            {totals.value > 0 ? ((m.value / totals.value) * 100).toFixed(1) : 0}%
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] text-slate-500">
+                          <div>
+                            <span className="text-slate-400 uppercase tracking-wider">市值:</span>{" "}
+                            <span className="font-semibold text-slate-700">{formatWan(m.value)}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 uppercase tracking-wider">曝險:</span>{" "}
+                            <span className="font-semibold text-slate-700">{formatWan(m.exposure)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="space-y-4">
-                  {chartData.map((m, idx) => (
-                    <div key={m.name} className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
-                          <span className="font-bold text-slate-700">{m.name}</span>
+
+                {/* Column 2: Asset markets */}
+                <div>
+                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <Globe size={14} /> 資產市場佔比
+                  </h4>
+                  <div className="h-[200px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RePieChart>
+                        <Pie
+                          data={marketValueCalculations}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={70}
+                          paddingAngle={8}
+                          dataKey="value"
+                        >
+                          {marketValueCalculations.map((m) => {
+                            const config = getMarketConfig(m.name);
+                            return (
+                              <Cell key={`cell-${m.name}`} fill={config.fillColor} />
+                            );
+                          })}
+                        </Pie>
+                        <Tooltip formatter={(val: number) => formatWan(val)} />
+                      </RePieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    {marketValueCalculations.map((m) => {
+                      const config = getMarketConfig(m.name);
+                      return (
+                        <div key={m.name} className="flex items-center justify-between text-xs p-2 rounded-lg hover:bg-slate-50 transition-colors">
+                          <div className="flex items-center gap-2">
+                            <div className={cn("w-2 h-2 rounded-full", config.color)} />
+                            <span className="font-medium text-slate-600">{config.label}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="font-bold text-slate-700">{formatWan(m.value)}</span>
+                            <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                              {totals.value > 0 ? ((m.value / totals.value) * 100).toFixed(1) : 0}%
+                            </span>
+                          </div>
                         </div>
-                        <span className="text-xs font-bold text-indigo-600">
-                          {totals.value > 0 ? ((m.value / totals.value) * 100).toFixed(1) : 0}%
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-end">
-                        <div>
-                          <p className="text-[10px] text-slate-400 uppercase tracking-wider">市值 (Value)</p>
-                          <p className="text-sm font-bold">{formatWan(m.value)}</p>
-                        </div>
-                        <div className="text-right text-slate-500">
-                          <p className="text-[10px] text-slate-400 uppercase tracking-wider">曝險 (Exposure)</p>
-                          <p className="text-xs font-semibold">{formatWan(m.exposure)}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </>
